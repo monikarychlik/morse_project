@@ -8,28 +8,58 @@
     android:layout_margin="12dp"
     tools:context=".MainActivity">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Wprowadź tekst:"
+        android:textColor="@android:color/black"
+        android:layout_marginTop="12dp"
+        android:layout_marginLeft="6dp"
+        android:layout_marginStart="6dp"/>
+
     <EditText
-        android:id="@+id/normalEditText"
+        android:id="@+id/inputEditText"
         android:layout_width="match_parent"
         android:layout_marginTop="12dp"
         android:inputType="text"
-        android:layout_height="wrap_content" />
+        android:textSize="20sp"
+        android:textColor="@android:color/black"
+        android:layout_height="60dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView"
+        android:textColor="@android:color/black"
+        android:text="Kodowanie:"
+        android:layout_marginTop="18dp"
+        android:layout_marginLeft="6dp"
+        android:layout_marginStart="6dp"/>
 
     <EditText
-        android:id="@+id/morseEditText"
+        android:id="@+id/outputEditText"
         android:layout_width="match_parent"
         android:layout_marginTop="12dp"
         android:enabled="false"
-        android:inputType="numberSigned"
-        android:layout_height="wrap_content" />
+        android:textSize="24sp"
+        android:textColor="@android:color/black"
+        android:inputType="textMultiLine"
+        android:layout_height="120dp" />
 
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
         android:layout_gravity="center"
-        android:layout_margin="12dp"
-        android:text="Kodowanie"
+        android:layout_marginTop="12dp"
+        android:text=" Dekodowanie "
         android:layout_height="wrap_content" />
 
+    <Button
+        android:id="@+id/buttonTransmit"
+        android:layout_width="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="12dp"
+        android:text=" Nadawaj "
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

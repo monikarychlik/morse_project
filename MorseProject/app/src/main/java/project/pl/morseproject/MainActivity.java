@@ -2,7 +2,7 @@ package project.pl.morseproject;
 
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
-import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -14,18 +14,21 @@ import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final long TIME_DELAY_SHORT = 400;
-    private static final long TIME_DELAY_LONG = 12000;
-    private MorseUtil morseUtil = new MorseUtil();
+    private static final long TIME_DELAY_SHORT = 50;
+    private static final long TIME_DELAY_MEDIUM = 300;
+    private static final long TIME_DELAY_LONG = 1000;
+
     private boolean textToMorse = true;
+    private boolean blockTransmitButton = false;
+    private String morseMessage = "";
     private Button button;
     private Button buttonTransmit;
     private EditText inputEditText;
     private EditText outputEditText;
     private TextView textView;
+    private MorseUtil morseUtil;
     private Camera camera;
-    private String morseMessage = "";
-    private Handler handler;
+    private Thread thread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,8 +36,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if (initView()) return;
-        initCameraFlash();
-        handler = new Handler();
+        morseUtil = new MorseUtil();
         setListeners();
     }
 
@@ -50,7 +52,8 @@ public class MainActivity extends AppCompatActivity {
         buttonTransmit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!textToMorse) {
+                if (!blockTransmitButton) {
+                    blockTransmitButton = true;
                     transmit();
                 }
             }
@@ -69,24 +72,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void initCameraFlash() {
-        this.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
+    private void turnFlashlightOn(){
+        if (camera == null) {
+            setupCameraFlashlight();
+        }
+
+        camera.startPreview();
     }
 
-    private void turnFlashlightOn(){
+    private void setupCameraFlashlight() {
+        this.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
+
         camera = Camera.open();
         Camera.Parameters parameters = camera.getParameters();
         parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
         camera.setParameters(parameters);
-        camera.startPreview();
     }
 
-
     private void turnFlashlightOff(){
-        camera = Camera.open();
-        Camera.Parameters parameters = camera.getParameters();
-        parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-        camera.setParameters(parameters);
         camera.stopPreview();
     }
 
@@ -96,33 +99,62 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void transmit() {
-        if (textToMorse) {
-            for (Character character : morseMessage.toCharArray()) {
-                if (character.compareTo('.') == 0) {
-                    turnFlashlightOn();
-                    //delayTurningFlashlightOff(TIME_DELAY_SHORT);
-                } else if (character.compareTo('-') == 0) {
-                    turnFlashlightOn();
-                    //delayTurningFlashlightOff(TIME_DELAY_LONG);
-                } else if (character.compareTo(' ') == 0) {
-                    //delayTurningFlashlightOff(TIME_DELAY_SHORT);
-                } else if (character.compareTo('|') == 0) {
-                    //delayTurningFlashlightOff(TIME_DELAY_LONG);
-                } else {
-                    continue;
-                }
-                //delayTurningFlashlightOff(TIME_DELAY_SHORT);
-            }
+        if (morseMessage.length() == 0) {
+            blockTransmitButton = false;
+            return;
         }
+
+        tryToJoinThread();
+        thread = new Thread(getRunnable());
+        thread.run();
     }
 
-    private void delayTurningFlashlightOff(long timeDelay) {
-        handler.removeCallbacksAndMessages(null);
-        handler.postDelayed(new Runnable() {
+    @NonNull
+    private Runnable getRunnable() {
+        return new Runnable() {
+            @Override
             public void run() {
-                turnFlashlightOff();
+                for (Character character : morseMessage.toCharArray()) {
+                    if (character.compareTo('.') == 0) {
+                        turnFlashlightOn();
+                        delay(TIME_DELAY_SHORT);
+                        turnFlashlightOff();
+                    } else if (character.compareTo('-') == 0) {
+                        turnFlashlightOn();
+                        delay(TIME_DELAY_LONG);
+                        turnFlashlightOff();
+                    } else if (character.compareTo(' ') == 0) {
+                        delay(TIME_DELAY_MEDIUM);
+                    } else if (character.compareTo('|') == 0) {
+                        delay(TIME_DELAY_LONG);
+                    } else {
+                        continue;
+                    }
+                    delay(TIME_DELAY_SHORT);
+                }
+                blockTransmitButton = false;
             }
-        }, timeDelay);
+
+            private void delay(long timeDelay) {
+                try {
+                    synchronized (this) {
+                        wait(timeDelay);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+    }
+
+    private void tryToJoinThread() {
+        try {
+            if (thread != null) {
+                thread.join();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private boolean initView() {
@@ -137,6 +169,16 @@ public class MainActivity extends AppCompatActivity {
                 || button == null
                 || buttonTransmit == null
                 || textView == null;
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (camera != null) {
+            camera.release();
+            camera = null;
+        }
+        tryToJoinThread();
+        super.onDestroy();
     }
 
     public TextWatcher getTextWatcher() {
@@ -157,10 +199,12 @@ public class MainActivity extends AppCompatActivity {
     private void translate(CharSequence s) {
         if (outputEditText != null) {
             if (textToMorse) {
-                outputEditText.setText(morseUtil.code(s));
-            } else {
-                morseMessage = morseUtil.decode(s);
+                morseMessage = morseUtil.code(s);
                 outputEditText.setText(morseMessage);
+            } else {
+                final String tempMessage = morseUtil.decode(s);
+                outputEditText.setText(tempMessage);
+                morseMessage = morseUtil.code(tempMessage);
             }
         }
     }

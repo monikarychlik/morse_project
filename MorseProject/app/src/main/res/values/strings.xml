@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Morse Project</string>
+    <string name="coding">Kodowanie</string>
+    <string name="decoding">Dekodowanie</string>
+    <string name="enter_text">Wprowadź tekst:</string>
+    <string name="transmit">Nadawaj</string>
 </resources>

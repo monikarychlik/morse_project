@@ -1,7 +1,5 @@
 package project.pl.morseproject;
 
-import android.content.pm.PackageManager;
-import android.hardware.Camera;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -27,8 +25,8 @@ public class MainActivity extends AppCompatActivity {
     private EditText outputEditText;
     private TextView textView;
     private MorseUtil morseUtil;
-    private Camera camera;
     private Thread thread;
+    private CameraFlashlightUtil cameraFlashlightUtil;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,8 +34,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if (initView()) return;
-        morseUtil = new MorseUtil();
+        initUtils();
         setListeners();
+    }
+
+    private void initUtils() {
+        morseUtil = new MorseUtil();
+        cameraFlashlightUtil = new CameraFlashlightUtil(this);
     }
 
     private void setListeners() {
@@ -63,34 +66,13 @@ public class MainActivity extends AppCompatActivity {
     private void onButtonClick() {
         textToMorse = !textToMorse;
         clearText();
-        if (button.getText().equals("Kodowanie")) {
-            button.setText("Dekodowanie");
-            textView.setText("Kodowanie:");
+        if (button.getText().equals(getString(R.string.coding))) {
+            button.setText(R.string.decoding);
+            textView.setText(R.string.coding);
         } else {
-            button.setText("Kodowanie");
-            textView.setText("Dekodowanie");
+            button.setText(R.string.coding);
+            textView.setText(R.string.decoding);
         }
-    }
-
-    private void turnFlashlightOn(){
-        if (camera == null) {
-            setupCameraFlashlight();
-        }
-
-        camera.startPreview();
-    }
-
-    private void setupCameraFlashlight() {
-        this.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
-
-        camera = Camera.open();
-        Camera.Parameters parameters = camera.getParameters();
-        parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-        camera.setParameters(parameters);
-    }
-
-    private void turnFlashlightOff(){
-        camera.stopPreview();
     }
 
     private void clearText() {
@@ -116,13 +98,13 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 for (Character character : morseMessage.toCharArray()) {
                     if (character.compareTo('.') == 0) {
-                        turnFlashlightOn();
+                        cameraFlashlightUtil.turnFlashlightOn();
                         delay(TIME_DELAY_SHORT);
-                        turnFlashlightOff();
+                        cameraFlashlightUtil.turnFlashlightOff();
                     } else if (character.compareTo('-') == 0) {
-                        turnFlashlightOn();
+                        cameraFlashlightUtil.turnFlashlightOn();
                         delay(TIME_DELAY_LONG);
-                        turnFlashlightOff();
+                        cameraFlashlightUtil.turnFlashlightOff();
                     } else if (character.compareTo(' ') == 0) {
                         delay(TIME_DELAY_MEDIUM);
                     } else if (character.compareTo('|') == 0) {
@@ -173,10 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (camera != null) {
-            camera.release();
-            camera = null;
-        }
+        cameraFlashlightUtil.releaseCamera();
         tryToJoinThread();
         super.onDestroy();
     }
